@@ -9,8 +9,6 @@ before:
   hooks:
     # You may remove this if you don't use go modules.
     - go mod tidy
-    # you may remove this if you don't need go generate
-    # - go generate ./...
 
 builds:
   - env:
@@ -44,7 +42,7 @@ nfpms:
     maintainer: 'https://github.com/dvaumoron'
     homepage: https://github.com/dvaumoron/gosince
     description: >-
-      gosince shows the first version introducing a go package or symbol, then display go doc information about it.
+      gosince shows the introducing version of a go package or symbol, then display go doc information about it.
     license: "Apache-2.0"
     formats:
       - deb
@@ -70,6 +68,6 @@ brews:
       name: homebrew-tap
     folder: Formula
     homepage: https://github.com/dvaumoron/gosince
-    description: shows the introducing version a Go package or symbol
+    description: shows the introducing version of a Go package or symbol
     license: "Apache-2.0"
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"

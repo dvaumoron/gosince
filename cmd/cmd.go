@@ -18,9 +18,63 @@
 
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/dvaumoron/gosince/config"
+	"github.com/dvaumoron/gosince/versiondb"
+	"github.com/spf13/cobra"
+)
+
+var conf config.Config
 
 func Init(version string) *cobra.Command {
-	// TODO
-	return nil
+	envRepoPath, envSourceUrl, err := config.InitDefault("CORNUCOPIA_REPO_PATH", "CORNUCOPIA_REPO_URL")
+
+	cmd := &cobra.Command{
+		Use:   "",
+		Short: "gosince shows the introducing version of a go package or symbol.",
+		Long: `gosince shows the introducing version of a go package or symbol, then display go doc information about it, find more details at :
+https://github.com/dvaumoron/gosince`,
+		Version: version,
+		Args:    cobra.RangeArgs(1, 2),
+		RunE: func(_ *cobra.Command, args []string) error {
+			if err != nil {
+				return err
+			}
+
+			if conf.Verbose {
+				fmt.Println("Use the repository", conf.RepoPath, "as local cache")
+				fmt.Println("Use the url", conf.SourceUrl, "as base to download api information")
+			}
+
+			pkg, symbol := args[0], ""
+			if len(args) == 1 {
+				if index := strings.IndexByte(pkg, '.'); index == -1 {
+					pkg = args[0]
+				}
+			} else {
+				symbol = args[1]
+			}
+
+			since, err := versiondb.Since(pkg, symbol)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("todo", since)
+
+			// TODO call "go doc" cmd
+
+			return err
+		},
+	}
+
+	cmdFlags := cmd.Flags()
+	cmdFlags.StringVarP(&conf.RepoPath, "cache-path", "c", envRepoPath, "Local path to cache the retrieved api information")
+	cmdFlags.StringVarP(&conf.SourceUrl, "source-addr", "s", envSourceUrl, "Location of Go source")
+	cmdFlags.BoolVarP(&conf.Verbose, "verbose", "v", false, "Verbose output")
+
+	return cmd
 }
