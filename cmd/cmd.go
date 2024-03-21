@@ -51,8 +51,8 @@ https://github.com/dvaumoron/gosince`,
 
 			pkg, symbol := args[0], ""
 			if len(args) == 1 {
-				if index := strings.IndexByte(pkg, '.'); index == -1 {
-					pkg = args[0]
+				if index := strings.IndexByte(pkg, '.'); index != -1 {
+					pkg, symbol = pkg[:index], pkg[index+1:]
 				}
 			} else {
 				symbol = args[1]
