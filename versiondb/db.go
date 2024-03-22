@@ -223,7 +223,7 @@ func (dl dataLoader) parseVersionData(version string, versionData []byte) error 
 			}
 
 			var symbolBuilder strings.Builder
-			symbolBuilder.WriteString(symbolDescWithoutPrefix[indexStart:indexParent])
+			symbolBuilder.WriteString(nameWithoutGeneric(symbolDescWithoutPrefix[indexStart:indexParent]))
 			symbolBuilder.WriteByte('.')
 			symbolBuilder.WriteString(methodDescWithoutReceiver[:indexParent2])
 			symbol = symbolBuilder.String()
