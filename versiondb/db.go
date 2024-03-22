@@ -142,7 +142,7 @@ func (dl dataLoader) load() error {
 }
 
 func (dl dataLoader) parseVersionData(version string, versionData []byte) error {
-	// TODO improve
+	// TODO refactor
 	versionDataScanner := bufio.NewScanner(bytes.NewReader(versionData))
 	for versionDataScanner.Scan() {
 		line := versionDataScanner.Text()
