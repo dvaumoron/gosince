@@ -38,7 +38,7 @@ const (
 var conf config.Config
 
 func Init(version string) *cobra.Command {
-	envRepoPath, envSourceUrl, err := config.InitDefault("CORNUCOPIA_REPO_PATH", "CORNUCOPIA_REPO_URL")
+	envRepoPath, envSourceUrl, err := config.InitDefault("GOSINCE_CACHE_PATH", "GOSINCE_SOURCE_URL")
 
 	callGoDoc := false
 
