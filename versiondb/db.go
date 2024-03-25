@@ -37,21 +37,24 @@ import (
 const go1Dot = "go1."
 
 var (
-	errParsingClosePar   = errors.New("parsing failure : wait close parenthesis")
-	errParsingComma      = errors.New("parsing failure : no comma separator")
-	errParsingOpenPar    = errors.New("parsing failure : wait open parenthesis")
-	errParsingSeparator  = errors.New("parsing failure : no field separator")
-	errParsingSpace      = errors.New("parsing failure : wait space separator")
-	errParsingStart      = errors.New("parsing failure : wrong start")
-	errParsingSymbolType = errors.New("parsing failure : unknown symbol type")
-	errUnexistingVersion = errors.New("can not retrieve go1 information") // inner string only displayed for go1, else used as marker.
-	ErrUnknownPackage    = errors.New("package not found")
-	ErrUnknownSymbol     = errors.New("symbol not found")
+	errParsingComma        = errors.New("parsing failure : no comma separator")
+	errParsingMethod       = errors.New("parsing failure : empty method")
+	errParsingMethodName   = errors.New("parsing failure : empty method name")
+	errParsingName         = errors.New("parsing failure : empty name")
+	errParsingReceiver     = errors.New("parsing failure : empty receiver")
+	errParsingReceiverName = errors.New("parsing failure : empty receiver name")
+	errParsingStart        = errors.New("parsing failure : wrong start")
+	errParsingSubName      = errors.New("parsing failure : empty field or method name")
+	errParsingType = errors.New("parsing failure : unknown definition type")
+	errParsingUncomplete   = errors.New("parsing failure : not enough element in definition")
+	errUnexistingVersion   = errors.New("can not retrieve go1 information") // inner string only displayed for go1, else used as marker.
+	ErrUnknownPackage      = errors.New("package not found")
+	ErrUnknownSymbol       = errors.New("symbol not found")
 )
 
 type VersionDatas struct {
-	data  map[string]map[string]string
-	index map[string][][2]string
+	data  map[string]map[string][2]string
+	index map[string][][3]string
 }
 
 func LoadDatas(conf config.Config) (VersionDatas, error) {
@@ -62,14 +65,14 @@ func LoadDatas(conf config.Config) (VersionDatas, error) {
 	}
 
 	dl := dataLoader{
-		VersionDatas: VersionDatas{data: map[string]map[string]string{}, index: map[string][][2]string{}},
+		VersionDatas: VersionDatas{data: map[string]map[string][2]string{}, index: map[string][][3]string{}},
 		repobase:     repobase, sourceBase: sourceBase, verbose: conf.Verbose,
 	}
 
 	return dl.VersionDatas, dl.load()
 }
 
-func (vd VersionDatas) Search(key string) [][2]string {
+func (vd VersionDatas) Search(key string) [][3]string {
 	return vd.index[key]
 }
 
@@ -83,7 +86,7 @@ func (vd VersionDatas) Since(pkg string, symbol string) (string, error) {
 	if !ok {
 		return "", ErrUnknownSymbol
 	}
-	return since, nil
+	return since[0], nil
 }
 
 type dataLoader struct {
@@ -93,23 +96,33 @@ type dataLoader struct {
 	verbose    bool
 }
 
-func (dl dataLoader) addIndexEntry(key string, entry string, version string) {
-	dl.index[key] = append(dl.index[key], [2]string{entry, version})
+func (dl dataLoader) addIndexEntry(key string, entry string, version string, deprecated bool) {
+	if deprecated {
+		for currentIndex, indexEntry := range dl.index[key] {
+			if indexEntry[0] == entry {
+				indexEntry[2] = version
+				dl.index[key][currentIndex] = indexEntry
+				break
+			}
+		}
+	} else {
+		dl.index[key] = append(dl.index[key], [3]string{entry, version})
+	}
 }
 
 func (dl dataLoader) addIndexPackageEntry(pkg string, version string) {
 	indexSlash := strings.LastIndexByte(pkg, '/')
-	dl.addIndexEntry(pkg[indexSlash+1:], pkg, version) // no error when indexSlash is -1
+	dl.addIndexEntry(pkg[indexSlash+1:], pkg, version, false) // no error when indexSlash is -1
 }
 
-func (dl dataLoader) addIndexSymbolEntry(pkg string, symbol string, version string) {
+func (dl dataLoader) addIndexSymbolEntry(pkg string, symbol string, version string, deprecated bool) {
 	var entryBuilder strings.Builder
 	entryBuilder.WriteString(pkg)
 	entryBuilder.WriteByte(' ')
 	entryBuilder.WriteString(symbol)
 
 	indexDot := strings.LastIndexByte(symbol, '.')
-	dl.addIndexEntry(strings.ToLower(symbol[indexDot+1:]), entryBuilder.String(), version) // no error when indexDot is -1
+	dl.addIndexEntry(strings.ToLower(symbol[indexDot+1:]), entryBuilder.String(), version, deprecated) // no error when indexDot is -1
 }
 
 func (dl dataLoader) load() error {
@@ -142,7 +155,6 @@ func (dl dataLoader) load() error {
 }
 
 func (dl dataLoader) parseVersionData(version string, versionData []byte) error {
-	// TODO refactor
 	versionDataScanner := bufio.NewScanner(bytes.NewReader(versionData))
 	for versionDataScanner.Scan() {
 		line := versionDataScanner.Text()
@@ -159,9 +171,10 @@ func (dl dataLoader) parseVersionData(version string, versionData []byte) error 
 			continue
 		}
 
-		if trimmedLine[len(trimmedLine)-12:] == "//deprecated" {
-			// TODO register and display deprecation version
-			continue
+		lenMinus12 := len(trimmedLine) - 12
+		deprecated := trimmedLine[lenMinus12:] == "//deprecated"
+		if deprecated {
+			trimmedLine = trimmedLine[:lenMinus12]
 		}
 
 		lineWithoutPrefix, ok := strings.CutPrefix(trimmedLine, "pkg ")
@@ -177,111 +190,77 @@ func (dl dataLoader) parseVersionData(version string, versionData []byte) error 
 		pkg := lineWithoutPrefix[:indexComma]
 		pkgSymbols, ok := dl.data[pkg]
 		if !ok {
-			pkgSymbols = map[string]string{"": version} // allows search of package version with ""
+			pkgSymbols = map[string][2]string{"": {version}} // allows search of package version with ""
 			dl.data[pkg] = pkgSymbols
 			dl.addIndexPackageEntry(pkg, version)
 		}
 
-		symbol := ""
 		symbolDesc := lineWithoutPrefix[indexComma+2:] // ignore comma and space
-		indexSpace := strings.IndexByte(symbolDesc, ' ')
-		if indexSpace == -1 {
-			return errParsingSpace
+		firstPart, secondPart := smartSplit(symbolDesc)
+		if len(firstPart) < 2 {
+			return errParsingUncomplete
 		}
 
-		symbolDescWithoutPrefix := symbolDesc[indexSpace+1:]
-		switch symbolDesc[:indexSpace] {
-		case "const", "var":
-			indexSpace = strings.IndexByte(symbolDescWithoutPrefix, ' ')
-			if indexSpace == -1 {
-				return errParsingSpace
+		symbol := ""
+		switch symbolType, _ := firstPart[0].cast(); symbolType {
+		case "const", "func", "var":
+			symbol, _ = firstPart[1].cast()
+			if symbol == "" {
+				return errParsingName
 			}
-
-			symbol = symbolDescWithoutPrefix[:indexSpace]
-		case "func":
-			indexParent := strings.IndexByte(symbolDescWithoutPrefix, '(')
-			if indexParent == -1 {
-				return errParsingOpenPar
-			}
-
-			symbol = nameWithoutGeneric(symbolDescWithoutPrefix[:indexParent])
 		case "method":
-			indexStart := 1
-			if symbolDescWithoutPrefix[1] == '*' {
-				indexStart = 2
+			if len(firstPart) < 3 {
+				return errParsingMethod
 			}
 
-			indexParent := strings.IndexByte(symbolDescWithoutPrefix, ')')
-			if indexParent == -1 {
-				return errParsingClosePar
+			_, receiver := firstPart[1].cast()
+			if len(receiver) == 0 {
+				return errParsingReceiver
 			}
 
-			methodDescWithoutReceiver := symbolDescWithoutPrefix[indexParent+2:] // ignore close parenthesis and space
-			indexParent2 := strings.IndexByte(methodDescWithoutReceiver, '(')
-			if indexParent2 == -1 {
-				return errParsingOpenPar
+			typeName, _ := receiver[0].cast()
+			if typeName == "" {
+				return errParsingReceiverName
+			}
+			if typeName[0] == '*' {
+				typeName = typeName[1:]
+			}
+
+			methodName, _ := firstPart[2].cast()
+			if methodName == "" {
+				return errParsingMethodName
 			}
 
 			var symbolBuilder strings.Builder
-			symbolBuilder.WriteString(nameWithoutGeneric(symbolDescWithoutPrefix[indexStart:indexParent]))
+			symbolBuilder.WriteString(typeName)
 			symbolBuilder.WriteByte('.')
-			symbolBuilder.WriteString(methodDescWithoutReceiver[:indexParent2])
+			symbolBuilder.WriteString(methodName)
 			symbol = symbolBuilder.String()
 		case "type":
-			indexSpace = strings.IndexByte(symbolDescWithoutPrefix, ' ')
-			if indexSpace == -1 {
-				return errParsingSpace
+			symbol, _ = firstPart[1].cast()
+			if symbol == "" {
+				return errParsingName
 			}
 
-			symbol = nameWithoutGeneric(symbolDescWithoutPrefix[:indexSpace])
-
-			kindInterface := true
-			indexComma := 0
-			symbolDescWithoutPrefixLen := len(symbolDescWithoutPrefix)
-			indexInterface := strings.Index(symbolDescWithoutPrefix, "interface")
-			if indexInterface == -1 {
-				indexStruct := strings.Index(symbolDescWithoutPrefix, "struct")
-				if indexStruct == -1 {
-					break
-				} else {
-					kindInterface = false
-					indexComma = indexStruct + 6
-					if indexComma == symbolDescWithoutPrefixLen || symbolDescWithoutPrefix[indexComma] != ',' {
-						break
-					}
-				}
-			} else {
-				indexComma = indexInterface + 9
-				if indexComma == symbolDescWithoutPrefixLen || symbolDescWithoutPrefix[indexComma] != ',' {
-					break
-				}
+			if len(secondPart) == 0 {
+				break
 			}
 
-			indexSeparator := 0
-			fieldDesc := symbolDescWithoutPrefix[indexComma+2:] // ignore comma and space
-			if kindInterface {
-				if fieldDesc == "unexported methods" {
-					break
-				}
-
-				indexSeparator = strings.IndexByte(fieldDesc, '(')
-			} else {
-				indexSeparator = strings.IndexByte(fieldDesc, ' ')
-			}
-			if indexSeparator == -1 {
-				return errParsingSeparator
+			subName, _ := secondPart[0].cast()
+			if subName == "" {
+				return errParsingSubName
 			}
 
 			var symbolBuilder strings.Builder
-			symbolBuilder.WriteString(nameWithoutGeneric(symbolDescWithoutPrefix[:indexSpace]))
+			symbolBuilder.WriteString(symbol)
 			symbolBuilder.WriteByte('.')
-			symbolBuilder.WriteString(fieldDesc[:indexSeparator])
+			symbolBuilder.WriteString(subName)
 			symbol = symbolBuilder.String()
 		default:
-			return errParsingSymbolType
+			return errParsingType
 		}
 
-		dl.register(pkgSymbols, pkg, symbol, version)
+		dl.register(pkgSymbols, pkg, symbol, version, deprecated)
 	}
 	return versionDataScanner.Err()
 }
@@ -308,14 +287,20 @@ func (dl dataLoader) read(fileEnd string) ([]byte, error) {
 	return data, writeFile(filePath, data)
 }
 
-func (dl dataLoader) register(pkgSymbols map[string]string, pkg string, symbol string, version string) {
+func (dl dataLoader) register(pkgSymbols map[string][2]string, pkg string, symbol string, version string, deprecated bool) {
 	symbolLower := strings.ToLower(symbol)
-	if _, ok := pkgSymbols[symbolLower]; ok { // no override
-		return
-	}
+	if deprecated {
+		symbolData := pkgSymbols[symbolLower]
+		symbolData[1] = version
+		pkgSymbols[symbolLower] = symbolData
+	} else {
+		if _, ok := pkgSymbols[symbolLower]; ok { // no override
+			return
+		}
 
-	pkgSymbols[symbolLower] = version
-	dl.addIndexSymbolEntry(pkg, symbol, version)
+		pkgSymbols[symbolLower] = [2]string{version}
+	}
+	dl.addIndexSymbolEntry(pkg, symbol, version, deprecated)
 }
 
 func download(dURL string) ([]byte, error) {
@@ -327,14 +312,6 @@ func download(dURL string) ([]byte, error) {
 
 	// supposing file will not be "too big"
 	return io.ReadAll(resp.Body)
-}
-
-func nameWithoutGeneric(name string) string {
-	indexSquare := strings.IndexByte(name, '[')
-	if indexSquare == -1 {
-		return name
-	}
-	return name[:indexSquare]
 }
 
 // Create the parents directories if needed and write the file
