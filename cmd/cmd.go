@@ -116,7 +116,8 @@ gosince <pkg> <sym>[.<methodOrField>]
 					}
 
 					if callGoDoc {
-						if err = runGoDoc(result[0]); err != nil {
+						splitted := strings.Split(result[0], " ")
+						if err = runGoDoc(splitted...); err != nil {
 							fmt.Println(err)
 							return
 						}
