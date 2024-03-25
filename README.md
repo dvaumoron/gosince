@@ -50,6 +50,6 @@ The path to a directory where **gosince** cache locally api informations.
 
 ### GOSINCE_SOURCE_URL
 
-String (Default: ${https://raw.githubusercontent.com/golang/go/master})
+String (Default: https://raw.githubusercontent.com/golang/go/master)
 
 URL to download Go source (**gosince** rely on `api/go1*.txt` files)
