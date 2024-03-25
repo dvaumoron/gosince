@@ -1,10 +1,10 @@
 # gosince
 
-gosince shows the introducing version of a go package or symbol, has a flag to call `go doc` about it.
+gosince shows the introducing version of a [go](https://go.dev) package or symbol, has a flag to call `go doc` about it.
 
 ## Getting started
 
-Install via [Homebrew](https://brew.sh/)
+Install via [Homebrew](https://brew.sh)
 
 ```console
 $ brew tap dvaumoron/tap
