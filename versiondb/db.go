@@ -76,17 +76,17 @@ func (vd VersionDatas) Search(key string) [][3]string {
 	return vd.index[key]
 }
 
-func (vd VersionDatas) Since(pkg string, symbol string) (string, error) {
+func (vd VersionDatas) Since(pkg string, symbol string) ([2]string, error) {
 	pkgSymbols, ok := vd.data[pkg]
 	if !ok {
-		return "", ErrUnknownPackage
+		return [2]string{}, ErrUnknownPackage
 	}
 
 	since, ok := pkgSymbols[symbol] // pkgSymbols must contains ""
 	if !ok {
-		return "", ErrUnknownSymbol
+		return [2]string{}, ErrUnknownSymbol
 	}
-	return since[0], nil
+	return since, nil
 }
 
 type dataLoader struct {
@@ -231,11 +231,7 @@ func (dl dataLoader) parseVersionData(version string, versionData []byte) error 
 				return errParsingMethodName
 			}
 
-			var symbolBuilder strings.Builder
-			symbolBuilder.WriteString(typeName)
-			symbolBuilder.WriteByte('.')
-			symbolBuilder.WriteString(methodName)
-			symbol = symbolBuilder.String()
+			symbol = buildDotted(typeName, methodName)
 		case "type":
 			symbol, _ = firstPart[1].cast()
 			if symbol == "" {
@@ -251,11 +247,7 @@ func (dl dataLoader) parseVersionData(version string, versionData []byte) error 
 				return errParsingSubName
 			}
 
-			var symbolBuilder strings.Builder
-			symbolBuilder.WriteString(symbol)
-			symbolBuilder.WriteByte('.')
-			symbolBuilder.WriteString(subName)
-			symbol = symbolBuilder.String()
+			symbol = buildDotted(symbol, subName)
 		default:
 			return errParsingType
 		}
@@ -301,6 +293,14 @@ func (dl dataLoader) register(pkgSymbols map[string][2]string, pkg string, symbo
 		pkgSymbols[symbolLower] = [2]string{version}
 	}
 	dl.addIndexSymbolEntry(pkg, symbol, version, deprecated)
+}
+
+func buildDotted(typeName string, subName string) string {
+	var builder strings.Builder
+	builder.WriteString(typeName)
+	builder.WriteByte('.')
+	builder.WriteString(subName)
+	return builder.String()
 }
 
 func download(dURL string) ([]byte, error) {

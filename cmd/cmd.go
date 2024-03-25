@@ -29,7 +29,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const addedIn = "added in"
+const (
+	addedIn      = "added in"
+	deprecatedIn = "and deprecated in"
+	found        = "found"
+)
 
 var conf config.Config
 
@@ -71,7 +75,7 @@ TODO
 
 			pkg = strings.ToLower(pkg)
 			symbol = strings.ToLower(symbol)
-			since, err := versionDatas.Since(pkg, symbol)
+			symbolData, err := versionDatas.Since(pkg, symbol)
 			if err != nil {
 				query := ""
 				switch err {
@@ -95,19 +99,32 @@ TODO
 					return err
 				case 1:
 					result := results[0]
-					fmt.Println("found", result[0], addedIn, result[1])
+					if deprecation := result[2]; deprecation == "" {
+						fmt.Println(found, result[0], addedIn, result[1])
+					} else {
+						fmt.Println(found, result[0], addedIn, result[1], deprecatedIn, result[2])
+					}
 
 					return runGoDoc(result[0])
 				default:
 					fmt.Println("Several possibilities found :")
 					for _, result := range results {
-						fmt.Println(result[0], addedIn, result[1])
+						if deprecation := result[2]; deprecation == "" {
+							fmt.Println(result[0], addedIn, result[1])
+						} else {
+							fmt.Println(result[0], addedIn, result[1], deprecatedIn, result[2])
+						}
 					}
 				}
 				return nil
 			}
 
-			fmt.Println("added in", since)
+			if deprecation := symbolData[1]; deprecation == "" {
+				fmt.Println(addedIn, symbolData[0])
+			} else {
+				fmt.Println(addedIn, symbolData[0], deprecatedIn, deprecation)
+			}
+
 			return runGoDoc(args...)
 		},
 	}
