@@ -39,3 +39,17 @@ Flags:
   -v, --verbose              Verbose output
       --version              version for gosince
 ```
+
+## Environment Variables
+
+### GOSINCE_CACHE_PATH
+
+String (Default: ${HOME}/.gosince)
+
+The path to a directory where **gosince** cache locally api informations.
+
+### GOSINCE_SOURCE_URL
+
+String (Default: ${https://raw.githubusercontent.com/golang/go/master})
+
+URL to download Go source (**gosince** rely on `api/go1*.txt` files)
