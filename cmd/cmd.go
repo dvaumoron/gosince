@@ -45,7 +45,7 @@ func Init(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gosince expr1 [expr2]",
 		Short: "gosince shows the introducing version of a go package or symbol.",
-		Long: `gosince shows the introducing version of a go package or symbol, then display go doc information about it, find more details at : https://github.com/dvaumoron/gosince
+		Long: `gosince shows the introducing version of a go package or symbol, find more details at : https://github.com/dvaumoron/gosince
 
 Usage of gosince:
 gosince <pkg>
@@ -55,9 +55,10 @@ gosince <pkg> <sym>[.<methodOrField>]
 `,
 		Version: version,
 		Args:    cobra.RangeArgs(1, 2),
-		RunE: func(_ *cobra.Command, args []string) error {
+		Run: func(_ *cobra.Command, args []string) {
 			if err != nil {
-				return err
+				fmt.Println(err)
+				return
 			}
 
 			if conf.Verbose {
@@ -76,7 +77,8 @@ gosince <pkg> <sym>[.<methodOrField>]
 
 			versionDatas, err := versiondb.LoadDatas(conf)
 			if err != nil {
-				return err
+				fmt.Println(err)
+				return
 			}
 
 			pkg = strings.ToLower(pkg)
@@ -96,13 +98,15 @@ gosince <pkg> <sym>[.<methodOrField>]
 					indexDot := strings.IndexByte(symbol, '.')
 					query = symbol[indexDot+1:] // no error when indexDot is -1
 				default:
-					return err
+					fmt.Println(err)
+					return
 				}
 
 				results := versionDatas.Search(query)
 				switch len(results) {
 				case 0:
-					return err
+					fmt.Println(err)
+					return
 				case 1:
 					result := results[0]
 					if result[2] == "" {
@@ -112,7 +116,10 @@ gosince <pkg> <sym>[.<methodOrField>]
 					}
 
 					if callGoDoc {
-						return runGoDoc(result[0])
+						if err = runGoDoc(result[0]); err != nil {
+							fmt.Println(err)
+							return
+						}
 					}
 				default:
 					fmt.Println("Several possibilities found :")
@@ -124,7 +131,7 @@ gosince <pkg> <sym>[.<methodOrField>]
 						}
 					}
 				}
-				return nil
+				return
 			}
 
 			if symbolData[1] == "" {
@@ -134,15 +141,16 @@ gosince <pkg> <sym>[.<methodOrField>]
 			}
 
 			if callGoDoc {
-				return runGoDoc(args...)
+				if err = runGoDoc(args...); err != nil {
+					fmt.Println(err)
+				}
 			}
-			return nil
 		},
 	}
 
 	cmdFlags := cmd.Flags()
 	cmdFlags.StringVarP(&conf.RepoPath, "cache-path", "p", envRepoPath, "Local path to cache the retrieved api information")
-	cmdFlags.BoolVarP(&callGoDoc, "go-doc", "d", false, "Call `go doc` command")
+	cmdFlags.BoolVarP(&callGoDoc, "go-doc", "d", false, "Call go doc command")
 	cmdFlags.StringVarP(&conf.SourceUrl, "source-addr", "a", envSourceUrl, "Location of Go source")
 	cmdFlags.BoolVarP(&conf.Verbose, "verbose", "v", false, "Verbose output")
 

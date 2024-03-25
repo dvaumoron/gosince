@@ -274,6 +274,9 @@ func (dl dataLoader) read(fileEnd string) ([]byte, error) {
 	}
 
 	if strings.TrimSpace(string(data)) == "404: Not Found" {
+		if dl.verbose {
+			fmt.Println("Failed to download", fileURL, ": Not Found")
+		}
 		return nil, errUnexistingVersion
 	}
 	return data, writeFile(filePath, data)
