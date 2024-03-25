@@ -45,7 +45,7 @@ var (
 	errParsingReceiverName = errors.New("parsing failure : empty receiver name")
 	errParsingStart        = errors.New("parsing failure : wrong start")
 	errParsingSubName      = errors.New("parsing failure : empty field or method name")
-	errParsingType = errors.New("parsing failure : unknown definition type")
+	errParsingType         = errors.New("parsing failure : unknown definition type")
 	errParsingUncomplete   = errors.New("parsing failure : not enough element in definition")
 	errUnexistingVersion   = errors.New("can not retrieve go1 information") // inner string only displayed for go1, else used as marker.
 	ErrUnknownPackage      = errors.New("package not found")
