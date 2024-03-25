@@ -22,6 +22,7 @@ import "errors"
 
 var (
 	errParsingClosing      = errors.New("parsing failure : wait closing separator")
+	errParsingString       = errors.New("parsing failure : unended string")
 	errParsingThirdPart    = errors.New("parsing failure : unhandled third part in definition")
 	errParsingWrongClosing = errors.New("parsing failure : wait another closing separator")
 )
@@ -50,6 +51,21 @@ func appendBuffer(splitted []node, buffer []rune) ([]node, []rune) {
 	return splitted, buffer
 }
 
+func consumeString(chars <-chan rune, delim rune) stringNode {
+	var buffer []rune
+	for char := range chars {
+		switch char {
+		case delim:
+			return stringNode(buffer)
+		case '\\':
+			buffer = append(buffer, char, <-chars)
+		default:
+			buffer = append(buffer, char)
+		}
+	}
+	panic(errParsingString)
+}
+
 func sendChar(chars chan<- rune, line string) {
 	for _, char := range line {
 		chars <- char
@@ -57,14 +73,17 @@ func sendChar(chars chan<- rune, line string) {
 	close(chars)
 }
 
-func smartSplit(word string) ([]node, []node) {
+func smartSplit(line string) ([]node, []node) {
 	chars := make(chan rune)
-	go sendChar(chars, word)
+	go sendChar(chars, line)
 
 	var buffer []rune
 	var splitted, splitted2 []node
 	for char := range chars {
 		switch char {
+		case '"', '\'':
+			splitted, buffer = appendBuffer(splitted, buffer)
+			splitted = append(splitted, consumeString(chars, char))
 		case '(':
 			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, splitSub(chars, ')'))
@@ -95,6 +114,9 @@ func splitSecond(chars <-chan rune) []node {
 	var splitted []node
 	for char := range chars {
 		switch char {
+		case '"', '\'':
+			splitted, buffer = appendBuffer(splitted, buffer)
+			splitted = append(splitted, consumeString(chars, char))
 		case '(':
 			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, splitSub(chars, ')'))
@@ -129,6 +151,9 @@ func splitSub(chars <-chan rune, delim rune) listNode {
 		}
 
 		switch char {
+		case '"', '\'':
+			splitted, buffer = appendBuffer(splitted, buffer)
+			splitted = append(splitted, consumeString(chars, char))
 		case '(':
 			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, splitSub(chars, ')'))
