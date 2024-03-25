@@ -73,20 +73,20 @@ func LoadDatas(conf config.Config) (VersionDatas, error) {
 }
 
 func (vd VersionDatas) Search(key string) [][3]string {
-	return vd.index[key]
+	return vd.index[strings.ToLower(key)]
 }
 
 func (vd VersionDatas) Since(pkg string, symbol string) ([2]string, error) {
-	pkgSymbols, ok := vd.data[pkg]
+	pkgSymbols, ok := vd.data[strings.ToLower(pkg)]
 	if !ok {
 		return [2]string{}, ErrUnknownPackage
 	}
 
-	since, ok := pkgSymbols[symbol] // pkgSymbols must contains ""
+	symbolData, ok := pkgSymbols[strings.ToLower(symbol)] // pkgSymbols must contains ""
 	if !ok {
 		return [2]string{}, ErrUnknownSymbol
 	}
-	return since, nil
+	return symbolData, nil
 }
 
 type dataLoader struct {

@@ -47,7 +47,11 @@ func Init(version string) *cobra.Command {
 		Short: "gosince shows the introducing version of a go package or symbol.",
 		Long: `gosince shows the introducing version of a go package or symbol, then display go doc information about it, find more details at : https://github.com/dvaumoron/gosince
 
-TODO
+Usage of gosince:
+gosince <pkg>
+gosince <sym>
+gosince <pkg>.<sym>[.<methodOrField>]
+gosince <pkg> <sym>[.<methodOrField>]
 `,
 		Version: version,
 		Args:    cobra.RangeArgs(1, 2),
