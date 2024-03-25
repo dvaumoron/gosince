@@ -40,6 +40,8 @@ var conf config.Config
 func Init(version string) *cobra.Command {
 	envRepoPath, envSourceUrl, err := config.InitDefault("CORNUCOPIA_REPO_PATH", "CORNUCOPIA_REPO_URL")
 
+	callGoDoc := false
+
 	cmd := &cobra.Command{
 		Use:   "gosince expr1 [expr2]",
 		Short: "gosince shows the introducing version of a go package or symbol.",
@@ -99,17 +101,19 @@ TODO
 					return err
 				case 1:
 					result := results[0]
-					if deprecation := result[2]; deprecation == "" {
+					if result[2] == "" {
 						fmt.Println(found, result[0], addedIn, result[1])
 					} else {
 						fmt.Println(found, result[0], addedIn, result[1], deprecatedIn, result[2])
 					}
 
-					return runGoDoc(result[0])
+					if callGoDoc {
+						return runGoDoc(result[0])
+					}
 				default:
 					fmt.Println("Several possibilities found :")
 					for _, result := range results {
-						if deprecation := result[2]; deprecation == "" {
+						if result[2] == "" {
 							fmt.Println(result[0], addedIn, result[1])
 						} else {
 							fmt.Println(result[0], addedIn, result[1], deprecatedIn, result[2])
@@ -119,19 +123,23 @@ TODO
 				return nil
 			}
 
-			if deprecation := symbolData[1]; deprecation == "" {
+			if symbolData[1] == "" {
 				fmt.Println(addedIn, symbolData[0])
 			} else {
-				fmt.Println(addedIn, symbolData[0], deprecatedIn, deprecation)
+				fmt.Println(addedIn, symbolData[0], deprecatedIn, symbolData[1])
 			}
 
-			return runGoDoc(args...)
+			if callGoDoc {
+				return runGoDoc(args...)
+			}
+			return nil
 		},
 	}
 
 	cmdFlags := cmd.Flags()
 	cmdFlags.StringVarP(&conf.RepoPath, "cache-path", "p", envRepoPath, "Local path to cache the retrieved api information")
-	cmdFlags.StringVarP(&conf.SourceUrl, "source-addr", "s", envSourceUrl, "Location of Go source")
+	cmdFlags.BoolVarP(&callGoDoc, "go-doc", "d", false, "Call `go doc` command")
+	cmdFlags.StringVarP(&conf.SourceUrl, "source-addr", "a", envSourceUrl, "Location of Go source")
 	cmdFlags.BoolVarP(&conf.Verbose, "verbose", "v", false, "Verbose output")
 
 	return cmd
