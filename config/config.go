@@ -31,7 +31,7 @@ type Config struct {
 	Verbose   bool
 }
 
-func InitDefault(envRepoPathName string, envRepoUrlName string) (string, string, error) {
+func InitDefault(envRepoPathName string, envSourceUrlName string) (string, string, error) {
 	envRepoPath := os.Getenv(envRepoPathName)
 	if envRepoPath == "" {
 		userHome, err := os.UserHomeDir()
@@ -41,7 +41,7 @@ func InitDefault(envRepoPathName string, envRepoUrlName string) (string, string,
 		envRepoPath = path.Join(userHome, ".gosince")
 	}
 
-	envSourceUrl := os.Getenv(envRepoUrlName)
+	envSourceUrl := os.Getenv(envSourceUrlName)
 	if envSourceUrl == "" {
 		envSourceUrl = defaultGoSourceUrl
 	}
