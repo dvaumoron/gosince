@@ -1,10 +1,10 @@
 # gosince
 
-gosince shows the introducing version of a go package or symbol, has a flag to call `go doc` about it.
+gosince shows the introducing version of a [Go](https://go.dev) package or symbol, has a flag to call `go doc` about it.
 
 ## Getting started
 
-Install via [Homebrew](https://brew.sh/)
+Install via [Homebrew](https://brew.sh)
 
 ```console
 $ brew tap dvaumoron/tap
@@ -50,6 +50,6 @@ The path to a directory where **gosince** cache locally api informations.
 
 ### GOSINCE_SOURCE_URL
 
-String (Default: ${https://raw.githubusercontent.com/golang/go/master})
+String (Default: https://raw.githubusercontent.com/golang/go/master)
 
 URL to download Go source (**gosince** rely on `api/go1*.txt` files)
