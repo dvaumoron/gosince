@@ -145,12 +145,10 @@ func splitSub(chars <-chan rune, delim rune) listNode {
 	var buffer []rune
 	var splitted []node
 	for char := range chars {
-		if char == delim {
+		switch char {
+		case delim: // no error on duplicate
 			splitted, _ = appendBuffer(splitted, buffer)
 			return splitted
-		}
-
-		switch char {
 		case '"', '\'':
 			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, consumeString(chars, char))
