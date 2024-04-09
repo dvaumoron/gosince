@@ -66,7 +66,7 @@ brews:
   - repository:
       owner: dvaumoron
       name: homebrew-tap
-    folder: Formula
+    directory: Formula
     homepage: https://github.com/dvaumoron/gosince
     description: shows the introducing version of a Go package or symbol
     license: "Apache-2.0"
