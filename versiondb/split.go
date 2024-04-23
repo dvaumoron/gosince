@@ -59,7 +59,9 @@ func consumeString(chars <-chan rune, delim rune) stringNode {
 		case delim:
 			return stringNode(buffer)
 		case '\\':
-			buffer = append(buffer, char, <-chars)
+			if char2, ok := <-chars; ok {
+				buffer = append(buffer, char, char2)
+			}
 		default:
 			buffer = append(buffer, char)
 		}
