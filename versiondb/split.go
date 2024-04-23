@@ -21,10 +21,11 @@ package versiondb
 import "errors"
 
 var (
-	errParsingClosing      = errors.New("parsing failure : wait closing separator")
-	errParsingString       = errors.New("parsing failure : unended string")
-	errParsingThirdPart    = errors.New("parsing failure : unhandled third part in definition")
-	errParsingWrongClosing = errors.New("parsing failure : wait another closing separator")
+	errParsingClosing           = errors.New("parsing failure : wait closing separator")
+	errParsingString            = errors.New("parsing failure : unended string")
+	errParsingThirdPart         = errors.New("parsing failure : unhandled third part in definition")
+	errParsingUnexpectedClosing = errors.New("parsing failure : unexpected closing separator")
+	errParsingWrongClosing      = errors.New("parsing failure : wait another closing separator")
 )
 
 type node interface {
@@ -94,7 +95,7 @@ func smartSplit(line string) ([]node, []node) {
 			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, splitSub(chars, '}'))
 		case ')', ']', '}':
-			panic(errParsingWrongClosing)
+			panic(errParsingUnexpectedClosing)
 		case ',':
 			break
 		case ' ':
